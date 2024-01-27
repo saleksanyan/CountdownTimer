@@ -1,9 +1,14 @@
 package org.example;
+
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+
 
 /**
  * this class makes countdown timer app
@@ -111,7 +116,7 @@ public class CDTimer extends JFrame{
      */
     private void countdownLabel() {
         countdownLabel = new JLabel(
-                String.format("%02d:%02d:%02d",0, 0, 0));
+                formatTime());
 
         countdownLabel.setFont(new Font("Calibri", Font.BOLD, 130));
         countdownLabel.setHorizontalAlignment(JLabel.CENTER);
@@ -139,15 +144,17 @@ public class CDTimer extends JFrame{
         resetButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                seconds = backupSeconds;
-                countdownLabel.setText(formatTime());
+                if(seconds>3) {
+                    seconds = backupSeconds;
+                    countdownLabel.setText(formatTime());
+                }
             }
         });
 
         pauseButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (startButtonPressed){
+                if (seconds>3 && startButtonPressed){
                     timer.stop();
                     startButtonPressed = false;
                 }
@@ -158,7 +165,7 @@ public class CDTimer extends JFrame{
         startButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if(!startButtonPressed) {
+                if(seconds > 3 && !startButtonPressed) {
                     countdownLabel.setText(formatTime());
                     timer = new Timer(1000, new ActionListener() {
                         @Override
@@ -225,21 +232,32 @@ public class CDTimer extends JFrame{
      * updating the time, starting the music and timer
      */
     private void updateTimer() {
-        Thread musicThread = new Thread(new MusicPlayer());
         seconds--;
         if(seconds == 3){
+            Thread musicThread = new Thread(new MusicPlayer());
             musicThread.start();
         }
         if(seconds <= 3 && seconds>=0){
             countdownLabel.setForeground(Color.RED);
             countdownLabel.setText(formatTime());
         }else if (seconds >= 0) {
-            if(musicThread.isAlive()){
-                musicThread.interrupt();
-            }
             countdownLabel.setForeground(Color.BLACK);
             countdownLabel.setText(formatTime());
         } else {
+            Thread timeIsUpThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    File file = new File("timeIsUp.wav");
+                    try{
+                        Clip clip = AudioSystem.getClip();
+                        clip.open(AudioSystem.getAudioInputStream(file));
+                        clip.start();
+                    } catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            });
+            timeIsUpThread.start();
             countdownLabel.setText("Time's up!");
             timer.stop();
         }
